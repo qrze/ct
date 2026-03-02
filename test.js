@@ -47,7 +47,7 @@ function tick(elapsedTime, multiplier) {
     var C = BigNumber.from(0.05 + 0.03 * c.level);
     var Alpha = BigNumber.from(1 + 0.02 * alpha.level);
 
-    var ratio = x.div(E.max(1e-10));
+    var ratio = (x.div(E.max(1e-10)));
 
     // dE/dt
     var dE = A.mul(x.pow(Alpha)).minus(B.mul(E));
