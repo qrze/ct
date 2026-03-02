@@ -120,7 +120,7 @@ var tick = (elapsedTime, multiplier) => {
     S += dS*dt;
     D += dD*dt;
 
-    currency.value = currency.value.plus(BigNumber.from(x.toNumber() * dt));
+    currency.value = BigNumber.from(currency.value.toNumber() + x.toNumber() * dt);
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
