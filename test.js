@@ -10,15 +10,13 @@ var E = BigNumber.ONE;
 var S = BigNumber.ONE;
 var D = BigNumber.ZERO;
 
-var a = BigNumber.ZERO;
-var b = BigNumber.ZERO;
-var c = BigNumber.ZERO;
-var alpha = BigNumber.ZERO;
+// Upgrade placeholders
+var a, b, c, alpha;
 
-var milestoneResonance = BigNumber.ZERO;
-var milestoneEquilibriumBoost = BigNumber.ZERO;
-var milestoneStressFeedback = BigNumber.ZERO;
+// Milestones placeholders
+var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 
+// Constants
 var lambda = 0.05;
 var eta = 0.05;
 var theta = 0.1;
@@ -49,7 +47,8 @@ function tick(elapsedTime, multiplier) {
     var C = BigNumber.from(0.05 + 0.03 * c.level);
     var Alpha = BigNumber.from(1 + 0.02 * alpha.level);
 
-    var ratio = (x.div(E.max(1e-10)));
+    // Compute ratio inside tick only
+    ratio = x.div(E.max(1e-10));
 
     // dE/dt
     var dE = A.mul(x.pow(Alpha)).minus(B.mul(E));
@@ -69,6 +68,7 @@ function tick(elapsedTime, multiplier) {
         if(ratio.gt(0.95) && ratio.lt(1.05)) growth = growth.mul(2);
     }
 
+    // Integrate
     x = x.plus(growth.mul(dt)).max(1);
     E = E.plus(dE.mul(dt)).max(1);
     S = S.plus(dS.mul(dt)).max(0);
@@ -88,5 +88,3 @@ function getTertiaryEquation() { return "S=" + S.toString(3) + "  D=" + D.toStri
 function getPublicationMultiplier(tau) { return tau.pow(0.9); }
 function getPublicationMultiplierFormula(symbol) { return symbol + "^{0.9}"; }
 function getTau() { return currency.value.max(1).log10(); }
-
-init();
