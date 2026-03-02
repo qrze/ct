@@ -8,15 +8,15 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "A self-organizing growth system governed by equilibrium, stability, and stress.";
 var authors = "qrze, melon";
-var version = 1.1;
+var version = 1.2;
 
 var currency;
-var x = BigNumber.ONE;
+var q = BigNumber.ONE;
 var E = BigNumber.ONE;
 var S = BigNumber.ONE;
 var D = BigNumber.ZERO;
 
-var a, b, c, alpha;
+var a1, a2, c1, alpha;
 
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 
@@ -36,17 +36,17 @@ function init() {
     // Regular Upgrades
     ///////////////////
 
-    a = theory.createUpgrade(99, currency, new ExponentialCost(5, 2));
-    a.getDescription = () => "Increase equilibrium growth (a)";
-    a.getEffect = () => BigNumber.from(0.1 + 0.05 * a.level);
+    a1 = theory.createUpgrade(99, currency, new ExponentialCost(5, 2));
+    a1.getDescription = () => "Increase equilibrium growth (a)";
+    a1.getEffect = () => BigNumber.from(0.1 + 0.05 * a1.level);
 
-    b = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
-    b.getDescription = () => "Reduce equilibrium decay (b)";
-    b.getEffect = () => BigNumber.from(0.05 / (1 + b.level));
+    a2 = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
+    a2.getDescription = () => "Reduce equilibrium decay (b)";
+    a2.getEffect = () => BigNumber.from(0.05 / (1 + a2.level));
 
-    c = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
-    c.getDescription = () => "Increase stability regen (c)";
-    c.getEffect = () => BigNumber.from(0.05 + 0.03 * c.level);
+    c1 = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
+    c1.getDescription = () => "Increase stability regen (c)";
+    c1.getEffect = () => BigNumber.from(0.05 + 0.03 * c.level);
 
     alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
     alpha.getDescription = () => "Increase equilibrium exponent (α)";
@@ -81,22 +81,22 @@ function tick(elapsedTime, multiplier) {
 
     let dt = BigNumber.from(elapsedTime * multiplier);
 
-    let A = a.getEffect();
-    let B = b.getEffect();
-    let C = c.getEffect();
+    let A = a1.getEffect();
+    let B = a2.getEffect();
+    let C = c1.getEffect();
     let Alpha = alpha.getEffect();
 
-    let ratio = x.div(E.max(1e-10));
+    let ratio = q.div(E.max(1e-10));
 
     ///////////////////
     // Differential System
     ///////////////////
 
     // dE/dt
-    let dE = A.mul(x.pow(Alpha)).minus(B.mul(E));
+    let dE = A.mul(q.pow(Alpha)).minus(B.mul(E));
 
     if (milestoneEquilibriumBoost.level > 0) {
-        dE = dE.plus(BigNumber.ONE.plus(x).log());
+        dE = dE.plus(BigNumber.ONE.plus(q).log());
     }
 
     // dS/dt
@@ -110,7 +110,7 @@ function tick(elapsedTime, multiplier) {
     let dD = ratio.pow(2).mul(theta).minus(S.mul(kappa)).minus(D.mul(rho));
 
     // dx/dt
-    let growth = S.mul(x).mul(BigNumber.ONE.minus(x.div(E.max(1e-10))));
+    let growth = S.mul(q).mul(BigNumber.ONE.minus(q.div(E.max(1e-10))));
     growth = growth.mul(BigNumber.from(Math.exp(-lambda * D.toNumber())));
 
     if (milestoneResonance.level > 0) {
@@ -123,12 +123,12 @@ function tick(elapsedTime, multiplier) {
     // Integration
     ///////////////////
 
-    x = x.plus(growth.mul(dt)).max(1);
+    q = q.plus(growth.mul(dt)).max(1);
     E = E.plus(dE.mul(dt)).max(1);
     S = S.plus(dS.mul(dt)).max(0);
     D = D.plus(dD.mul(dt)).max(0);
 
-    currency.value = currency.value.plus(x.mul(dt));
+    currency.value = currency.value.plus(q.mul(dt));
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
