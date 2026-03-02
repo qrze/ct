@@ -21,13 +21,13 @@ var alpha_level = 0;
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 
 // Constants
-var lambda = 0.05;
-var eta = 0.05;
-var theta = 0.1;
-var kappa = 0.1;
-var rho = 0.02;
+var lambda = BigNumber.from(0.05);
+var eta = BigNumber.from(0.05);
+var theta = BigNumber.from(0.1);
+var kappa = BigNumber.from(0.1);
+var rho = BigNumber.from(0.02);
 
-ratio = BigNumber.ZERO;
+var ratio = BigNumber.ZERO;
 
 function init() {
     currency = theory.createCurrency();
@@ -55,40 +55,44 @@ function init() {
 function tick(elapsedTime, multiplier) {
     var dt = BigNumber.from(elapsedTime*multiplier);
 
-    // Compute upgrade effects using manual levels
-    var A = BigNumber.from(0.1 + 0.05 * a_level);
-    var B = BigNumber.from(0.05 / (1 + b_level));
-    var C = BigNumber.from(0.05 + 0.03 * c_level);
-    var Alpha = BigNumber.from(1 + 0.02 * alpha_level);
+    // Upgrade effects
+    var A = BigNumber.from(0.1).plus(BigNumber.from(0.05).times(a_level));
+    var B = BigNumber.from(0.05).div(BigNumber.ONE.plus(BigNumber.from(b_level)));
+    var C = BigNumber.from(0.05).plus(BigNumber.from(0.03).times(c_level));
+    var Alpha = BigNumber.ONE.plus(BigNumber.from(0.02).times(alpha_level));
 
-    // Compute ratio inside tick only
-    ratio = x.div(E.max(1e-10));
+    // Compute ratio safely
+    ratio = x.times(BigNumber.ONE.div(E.max(BigNumber.from(1e-10))));
 
     // dE/dt
-    var dE = A.mul(x.pow(Alpha)).minus(B.mul(E));
-    if(milestoneEquilibriumBoost.level>0) dE = dE.plus(BigNumber.ONE.plus(x).log());
+    var dE = A.times(x.pow(Alpha)).minus(B.times(E));
+    if(milestoneEquilibriumBoost.level>0) {
+        dE = dE.plus(BigNumber.ONE.plus(x).log());
+    }
 
     // dS/dt
-    var dS = C.minus(ratio.minus(1).abs().mul(0.1)).minus(D.mul(eta));
-    if(milestoneStressFeedback.level>0) dS = dS.plus(D.sqrt().mul(0.05));
+    var dS = C.minus(ratio.minus(BigNumber.ONE).abs().times(BigNumber.from(0.1))).minus(D.times(eta));
+    if(milestoneStressFeedback.level>0) {
+        dS = dS.plus(D.sqrt().times(BigNumber.from(0.05)));
+    }
 
     // dD/dt
-    var dD = ratio.pow(2).mul(theta).minus(S.mul(kappa)).minus(D.mul(rho));
+    var dD = ratio.pow(BigNumber.from(2)).times(theta).minus(S.times(kappa)).minus(D.times(rho));
 
     // dx/dt
-    var growth = S.mul(x).mul(BigNumber.ONE.minus(x.div(E.max(1e-10))));
-    growth = growth.mul(BigNumber.ONE.div(BigNumber.ONE.plus(D.mul(lambda))));
+    var growth = S.times(x).times(BigNumber.ONE.minus(x.times(BigNumber.ONE.div(E.max(BigNumber.from(1e-10))))));
+    growth = growth.times(BigNumber.ONE.div(BigNumber.ONE.plus(D.times(lambda))));
     if(milestoneResonance.level>0) {
-        if(ratio.gt(0.95) && ratio.lt(1.05)) growth = growth.mul(2);
+        if(ratio.gt(BigNumber.from(0.95)) && ratio.lt(BigNumber.from(1.05))) growth = growth.times(BigNumber.from(2));
     }
 
     // Integrate
-    x = x.plus(growth.mul(dt)).max(1);
-    E = E.plus(dE.mul(dt)).max(1);
-    S = S.plus(dS.mul(dt)).max(0);
-    D = D.plus(dD.mul(dt)).max(0);
+    x = x.plus(growth.times(dt)).max(BigNumber.ONE);
+    E = E.plus(dE.times(dt)).max(BigNumber.ONE);
+    S = S.plus(dS.times(dt)).max(BigNumber.ZERO);
+    D = D.plus(dD.times(dt)).max(BigNumber.ZERO);
 
-    currency.value = currency.value.plus(x.mul(dt));
+    currency.value = currency.value.plus(x.times(dt));
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
@@ -101,4 +105,4 @@ function getTertiaryEquation() { return "S=" + S.toString(3) + "  D=" + D.toStri
 
 function getPublicationMultiplier(tau) { return tau.pow(0.9); }
 function getPublicationMultiplierFormula(symbol) { return symbol + "^{0.9}"; }
-function getTau() { return currency.value.max(1).log10(); }
+function getTau() { return currency.value.max(BigNumber.ONE).log10(); }
