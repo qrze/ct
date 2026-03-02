@@ -12,6 +12,10 @@ var D = BigNumber.ZERO;
 
 // Upgrade placeholders
 var a, b, c, alpha;
+var a_level = 0;
+var b_level = 0;
+var c_level = 0;
+var alpha_level = 0;
 
 // Milestones placeholders
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
@@ -28,11 +32,20 @@ var ratio = BigNumber.ZERO;
 function init() {
     currency = theory.createCurrency();
 
+    // Upgrades
     a = theory.createUpgrade(0, currency, new ExponentialCost(5,2));
-    b = theory.createUpgrade(1, currency, new ExponentialCost(10,2.2));
-    c = theory.createUpgrade(2, currency, new ExponentialCost(20,2.5));
-    alpha = theory.createUpgrade(3, currency, new ExponentialCost(50,3));
+    a.onBuy = function() { a_level++; };
 
+    b = theory.createUpgrade(1, currency, new ExponentialCost(10,2.2));
+    b.onBuy = function() { b_level++; };
+
+    c = theory.createUpgrade(2, currency, new ExponentialCost(20,2.5));
+    c.onBuy = function() { c_level++; };
+
+    alpha = theory.createUpgrade(3, currency, new ExponentialCost(50,3));
+    alpha.onBuy = function() { alpha_level++; };
+
+    // Milestones
     theory.setMilestoneCost(new LinearCost(10,10));
     milestoneResonance = theory.createMilestoneUpgrade(0,1);
     milestoneEquilibriumBoost = theory.createMilestoneUpgrade(1,1);
@@ -42,10 +55,11 @@ function init() {
 function tick(elapsedTime, multiplier) {
     var dt = BigNumber.from(elapsedTime*multiplier);
 
-    var A = BigNumber.from(0.1 + 0.05 * a.level);
-    var B = BigNumber.from(0.05 / (1 + b.level));
-    var C = BigNumber.from(0.05 + 0.03 * c.level);
-    var Alpha = BigNumber.from(1 + 0.02 * alpha.level);
+    // Compute upgrade effects using manual levels
+    var A = BigNumber.from(0.1 + 0.05 * a_level);
+    var B = BigNumber.from(0.05 / (1 + b_level));
+    var C = BigNumber.from(0.05 + 0.03 * c_level);
+    var Alpha = BigNumber.from(1 + 0.02 * alpha_level);
 
     // Compute ratio inside tick only
     ratio = x.div(E.max(1e-10));
