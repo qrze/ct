@@ -8,12 +8,16 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "A self-organizing growth system with equilibrium, stability, and stress.";
 var authors = "qrze, melon";
-var version = 1;
+var version = 1.1;
 var releaseOrder = "1";
 
 requiresGameVersion("1.4.33");
 
 var tauMultiplier = 4;
+
+// Soft caps to prevent Infinity or negative x
+var X_SOFTCAP = 1e6;    // soft max for x
+var X_MIN = 1e-10;      // soft min for x
 
 var x = BigNumber.ONE;
 var E = BigNumber.ONE;
@@ -93,12 +97,14 @@ var tick = (elapsedTime, multiplier) => {
     let C = 0.05 + 0.03*c.level;
     let Alpha = 1 + 0.02*alpha.level;
 
-    // Ratio
-    let ratio = x.toNumber() / Math.max(E.toNumber(), 1e-10);
+    // Apply soft caps to x
+    let xVal = Math.min(Math.max(x.toNumber(), X_MIN), X_SOFTCAP);
+    let EVal = Math.max(E.toNumber(), 1e-10);
+    let ratio = xVal / EVal;
 
     // dE/dt
-    let dE = A * Math.pow(x.toNumber(), Alpha) - B * E.toNumber();
-    if (milestoneEquilibriumBoost.level > 0) dE += Math.log(x.toNumber() + 1);
+    let dE = A * Math.pow(xVal, Alpha) - B * EVal;
+    if (milestoneEquilibriumBoost.level > 0) dE += Math.log(xVal + 1);
 
     // dS/dt
     let dS = C - 0.1*Math.abs(ratio - 1) - 0.05*D;
@@ -108,17 +114,20 @@ var tick = (elapsedTime, multiplier) => {
     let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.02*D;
 
     // dx/dt
-    let growth = S * x.toNumber() * (1 - x.toNumber()/Math.max(E.toNumber(),1e-10));
+    let growth = S * xVal * (1 - xVal/EVal);
     growth /= (1 + 0.05*D);
     if(milestoneResonance.level>0 && ratio>0.95 && ratio<1.05) growth *= 2;
 
-    // Integrate
-    x = BigNumber.from(x.toNumber() + growth*dt);
-    E = BigNumber.from(E.toNumber() + dE*dt);
+    // Integrate with soft cap
+    let newX = xVal + growth*dt;
+    newX = Math.min(Math.max(newX, X_MIN), X_SOFTCAP);
+    x = BigNumber.from(newX);
+
+    E = BigNumber.from(EVal + dE*dt);
     S += dS*dt;
     D += dD*dt;
 
-    // Fully loader-safe update: no .plus()
+    // Fully loader-safe update
     currency.value = BigNumber.from(currency.value.toNumber() + x.toNumber()*dt);
 
     theory.invalidatePrimaryEquation();
