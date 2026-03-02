@@ -28,9 +28,9 @@ var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 var init = () => {
     currency = theory.createCurrency();
 
-    // -----------------
-    // Upgrades
-    // -----------------
+    /////////////////////////////
+    // Regular Upgrades
+    /////////////////////////////
 
     // a: equilibrium growth
     {
@@ -50,7 +50,7 @@ var init = () => {
         b.getInfo = (amount) => Utils.getMathTo(getInfo(b.level), getInfo(b.level + amount));
     }
 
-    // c: stability regen
+    // c: stability regeneration
     {
         let getDesc = (level) => "c = " + (0.05 + 0.03*level).toFixed(3);
         let getInfo = (level) => "c=" + (0.05 + 0.03*level).toFixed(3);
@@ -68,9 +68,9 @@ var init = () => {
         alpha.getInfo = (amount) => Utils.getMathTo(getInfo(alpha.level), getInfo(alpha.level + amount));
     }
 
-    // -----------------
+    /////////////////////////////
     // Milestones
-    // -----------------
+    /////////////////////////////
     theory.setMilestoneCost(new LinearCost(10, 10));
 
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
@@ -87,9 +87,9 @@ var init = () => {
 }
 
 var tick = (elapsedTime, multiplier) => {
-    let dt = BigNumber.from(elapsedTime*multiplier);
+    let dt = elapsedTime*multiplier;
 
-    // Upgrade effects
+    // Compute upgrade effects
     let A = 0.1 + 0.05*a.level;
     let B = 0.05 / (1 + b.level);
     let C = 0.05 + 0.03*c.level;
@@ -115,12 +115,12 @@ var tick = (elapsedTime, multiplier) => {
     if(milestoneResonance.level>0 && ratio>0.95 && ratio<1.05) growth *= 2;
 
     // Integrate
-    x = BigNumber.from(x.toNumber() + growth*dt.toNumber());
-    E = BigNumber.from(E.toNumber() + dE*dt.toNumber());
-    S += dS*dt.toNumber();
-    D += dD*dt.toNumber();
+    x = BigNumber.from(x.toNumber() + growth*dt);
+    E = BigNumber.from(E.toNumber() + dE*dt);
+    S += dS*dt;
+    D += dD*dt;
 
-    currency.value = currency.value.plus(x.times(dt));
+    currency.value = currency.value.plus(BigNumber.from(x.toNumber() * dt));
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
