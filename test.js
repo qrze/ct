@@ -1,9 +1,3 @@
-import { ExponentialCost, LinearCost } from "./api/Costs";
-import { Localization } from "./api/Localization";
-import { BigNumber } from "./api/BigNumber";
-import { theory } from "./api/Theory";
-import { Utils } from "./api/Utils";
-
 var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "A self-organizing growth system governed by equilibrium, stability, and stress.";
