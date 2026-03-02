@@ -7,8 +7,8 @@ import { Utils } from "./api/Utils";
 var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "A self-organizing growth system governed by equilibrium, stability, and stress.";
-var authors = "YourName";
-var version = 1;
+var authors = "qrze, melon";
+var version = 1.1;
 
 var currency;
 var x = BigNumber.ONE;
@@ -36,7 +36,7 @@ function init() {
     // Regular Upgrades
     ///////////////////
 
-    a = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
+    a = theory.createUpgrade(99, currency, new ExponentialCost(5, 2));
     a.getDescription = () => "Increase equilibrium growth (a)";
     a.getEffect = () => BigNumber.from(0.1 + 0.05 * a.level);
 
