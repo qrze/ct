@@ -27,7 +27,7 @@ var theta = 0.1;
 var kappa = 0.1;
 var rho = 0.02;
 
-var ratio = BigNumber.ZERO;
+ratio = BigNumber.ZERO;
 
 function init() {
     currency = theory.createCurrency();
