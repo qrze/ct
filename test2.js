@@ -8,7 +8,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "A self-organizing growth system with equilibrium, stability, and stress, featuring permanent upgrades and improved stability dynamics.";
 var authors = "qrze, melon";
-var version = 1.3;
+var version = 1;
 var releaseOrder = "1";
 
 requiresGameVersion("1.4.33");
