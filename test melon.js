@@ -91,7 +91,7 @@ var tick = (elapsedTime, multiplier) =>
     if (milestoneEquilibriumBoost.level > 0)
         dE += Math.log(xVal + 1);
 
-    let dS = C - 0.1*Math.abs(ratio - 1) - 0.05*D;
+    let dS = C - 0.05*Math.abs(ratio-1) * (x/(x+10));
 
     if (milestoneStressFeedback.level > 0)
         dS += 0.05*Math.sqrt(D);
