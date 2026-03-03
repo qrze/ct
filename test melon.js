@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 3.0;
+var version = 3.1;
 
 requiresGameVersion("1.4.33");
 
@@ -140,7 +140,8 @@ var tick = (elapsedTime, multiplier) =>
 
     // Add to log-space instead of multiplying huge powers
     let newLogTau = logTau + additiveBoost;
-
+    newLogTau = Math.min(newLogTau, 308);
+    tauFinal = BigNumber.from(10).pow(newLogTau);
     // Smoothly cap the growth
     if (newLogTau > 300) {
         newLogTau = 300 + Math.log10(1 + (newLogTau - 300) * 0.1);
