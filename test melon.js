@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 2.8;
+var version = 2.9;
 
 requiresGameVersion("1.4.33");
 
@@ -113,34 +113,31 @@ var tick = (elapsedTime, multiplier) =>
 
     currency.value += x * BigNumber.from(dt);
 
-    // ==========================
-    // SMOOTH TAU EXPLOSION
-    // ==========================
+    // =============
+    // TAU EXPLOSION
+    // =============
 
     let tauBase = currency.value.max(BigNumber.ONE).pow(0.18);
     let tauFinal = tauBase;
 
     if (milestoneExplosion.level > 0)
 {
-    let logTau = tauBase.log10().toNumber();
-
+    let logTau = Math.max(0, tauBase.log10().toNumber()); 
+    
     let center = 250;
     let width = 80;
     let peakStrength = 25;
-
+    
     let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.02;
-
+    
     let dist = (logTau - center) / width;
-
-    // Gaussian but bounded
+    
     let resonance = Math.exp(-dist * dist);
-
-    // Soft scaling instead of exponential explosion
+    
     let additiveBoost = peakStrength * resonance * pubFuel;
-
-    // Add to log-space instead of multiplying huge powers
+    
     let newLogTau = logTau + additiveBoost;
-
+    
     tauFinal = BigNumber.from(10).pow(newLogTau);
 }
 
