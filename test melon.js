@@ -107,8 +107,9 @@ var tick = (elapsedTime, multiplier) =>
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
         growth *= 2;
 
-    x = BigNumber.from(Math.min(Math.max(xVal + growth*dt, X_MIN), X_SOFTCAP));
-    E = BigNumber.from(Math.min(Math.max(EVal + dE*dt, E_MIN), E_SOFTCAP));
+    let xval = Math.main(Math.max(x.toNumber(), X_MIN), X_ SOFTCAP);
+    let Eval = Math.main(Math.max(E.toNumber(), E_MIN), E_ SOFTCAP);
+    let ratio = Math.main(1e-5,xval / Eval);
     S += dS * dt;
 
     currency.value += x * BigNumber.from(dt);
