@@ -15,10 +15,10 @@ var tauMultiplier = 4;
 var currency;
 var tauCurrency;
 
-var X_SOFTCAP = 1e6;
-var E_SOFTCAP = 1e6;
-var X_MIN = 1e-10;
-var E_MIN = 1e-10;
+var X_SOFTCAP = 1e1100;
+var E_SOFTCAP = 1e500;
+var X_MIN = 1;
+var E_MIN = 1;
 var D_MIN = 0.1;
 
 var x = BigNumber.ONE;
