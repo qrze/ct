@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with hidden resonance dynamics.";
 var authors = "qrze, melon";
-var version = 2.3;
+var version = 2.5;
 
 requiresGameVersion("1.4.33");
 
