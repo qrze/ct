@@ -7,10 +7,11 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with hidden resonance dynamics.";
 var authors = "qrze, melon";
-var version = 2.1;
+var version = 2.2;
 
 requiresGameVersion("1.4.33");
 
+var tauMultiplier = 4;
 var currency;
 var tauCurrency;
 
@@ -22,7 +23,7 @@ var D_MIN = 0.1;
 
 var x = BigNumber.ONE;
 var E = BigNumber.ONE;
-var S = 1;
+var S = 1.1;
 var D = 0;
 
 var a, b, c, alpha;
@@ -129,50 +130,49 @@ var tick = (elapsedTime, multiplier) =>
 
     currency.value = BigNumber.from(currency.value.toNumber() + x.toNumber()*dt);
 
-    // -------------------------
-    // Tau Calculation
-    // -------------------------
-    let baseTau = currency.value.pow(0.18);
+    // =====================
+    // TAU CALCULATION
+    // =====================
+
+    let tauBase = currency.value.pow(0.18);
+
+    let tauFinal = tauBase;
 
     if (milestoneExplosion.level > 0)
     {
-        let logTau = baseTau.log10().toNumber();
+        // TRUE tau-space
+        let logTau = tauBase.log10().toNumber();
 
+        // Explosion centered between e200–e300 tau
         let center = 250;
-        let width = 60;
-        let baseStrength = 70;
+        let width = 40;
+        let strength = 50;
 
-        let pubCount = theory.publicationCount;
-        let fuel = 1 + Math.sqrt(pubCount) * 0.05;
-        if (fuel > 1.5)
-            fuel = 1.5;
+        // Publication fuel (controlled)
+        let pubFuel = 1 + Math.sqrt(theory.publicationCount)*0.04;
+        if (pubFuel > 1.4)
+            pubFuel = 1.4;
 
-        let strength = baseStrength * fuel;
+        // Quartic curve
+        let dist = (logTau - center)/width;
+        let burst = strength*pubFuel/(1 + dist*dist*dist*dist);
 
-        let distance = (logTau - center) / width;
-
-        let burst =
-            strength /
-            (1 + distance * distance * distance * distance);
-
+        // Decay after e400
         let decay = 1;
 
         if (logTau > 400)
-            decay =
-                1 /
-                (1 + (logTau - 400) *
-                     (logTau - 400) / 5000);
+            decay = 1/(1 + (logTau-400)*(logTau-400)/3000);
 
+        // Useless past e500
         if (logTau > 500)
             decay = 0;
 
-        let finalBoost = burst * decay;
+        let boost = BigNumber.from(10).pow(burst*decay);
 
-        let multiplier =
-            BigNumber.from(10).pow(finalBoost);
-
-        baseTau = baseTau * multiplier;
+        tauFinal = tauBase * boost;
     }
+
+    tau.value = tauFinal;
 
     tauCurrency.value = baseTau;
 
