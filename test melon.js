@@ -183,9 +183,12 @@ var getPrimaryEquation = () =>
 var getSecondaryEquation = () =>
     "\\dot{E} = ax^\\alpha - bE";
 
-var getTertiaryEquation = () =>
-    "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
+var getTertiaryEquation = () => {
+    let Sval = (typeof S.toNumber === "function") ? S.toNumber() : S;
+    let Dval = (typeof D.toNumber === "function") ? D.toNumber() : D;
 
+    return "S=" + Sval.toFixed(2) + ", D=" + Dval.toFixed(2);
+};
 var getPublicationMultiplier = (tau) =>
     tau.pow(0.85);
 
