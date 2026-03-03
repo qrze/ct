@@ -5,13 +5,14 @@ import { Utils } from "./api/Utils";
 
 var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
-var description = "Stable equilibrium growth with hidden resonance dynamics.";
+var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 2.5;
+var version = 2.7;
 
 requiresGameVersion("1.4.33");
 
 var tauMultiplier = 4;
+
 var currency;
 var tauCurrency;
 
@@ -35,40 +36,26 @@ var init = () =>
     currency = theory.createCurrency();
     tauCurrency = theory.createCurrency("τ", "\\tau");
 
-    // a
-    {
-        a = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
-        a.getDescription = (_) => Utils.getMath("a = " + (0.1 + 0.05*a.level).toFixed(2));
-        a.getInfo = (amount) => Utils.getMath("a = " + (0.1 + 0.05*(a.level + amount)).toFixed(2));
-    }
+    a = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
+    a.getDescription = (_) => Utils.getMath("a = " + (0.1 + 0.05*a.level).toFixed(2));
+    a.getInfo = (amt) => Utils.getMath("a = " + (0.1 + 0.05*(a.level + amt)).toFixed(2));
 
-    // b
-    {
-        b = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
-        b.getDescription = (_) => Utils.getMath("b = " + (0.05/(1 + b.level)).toFixed(3));
-        b.getInfo = (amount) => Utils.getMath("b = " + (0.05/(1 + b.level + amount)).toFixed(3));
-    }
+    b = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
+    b.getDescription = (_) => Utils.getMath("b = " + (0.05/(1 + b.level)).toFixed(3));
+    b.getInfo = (amt) => Utils.getMath("b = " + (0.05/(1 + b.level + amt)).toFixed(3));
 
-    // c
-    {
-        c = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
-        c.getDescription = (_) => Utils.getMath("c = " + (0.05 + 0.03*c.level).toFixed(3));
-        c.getInfo = (amount) => Utils.getMath("c = " + (0.05 + 0.03*(c.level + amount)).toFixed(3));
-    }
+    c = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
+    c.getDescription = (_) => Utils.getMath("c = " + (0.05 + 0.03*c.level).toFixed(3));
+    c.getInfo = (amt) => Utils.getMath("c = " + (0.05 + 0.03*(c.level + amt)).toFixed(3));
 
-    // alpha
-    {
-        alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
-        alpha.getDescription = (_) => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
-        alpha.getInfo = (amount) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amount)).toFixed(3));
-    }
+    alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
+    alpha.getDescription = (_) => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
+    alpha.getInfo = (amt) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amt)).toFixed(3));
 
-    // Permanent Upgrades
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-    // Milestones
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Resonance doubles growth near equilibrium";
 
@@ -79,7 +66,7 @@ var init = () =>
     milestoneStressFeedback.description = "Convert stress into stability";
 
     milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
-    milestoneExplosion.description = "System begins to resonate at extreme τ";
+    milestoneExplosion.description = "Smooth τ resonance";
 };
 
 var tick = (elapsedTime, multiplier) =>
@@ -95,9 +82,6 @@ var tick = (elapsedTime, multiplier) =>
     let EVal = Math.min(Math.max(E.toNumber(), E_MIN), E_SOFTCAP);
     let ratio = Math.max(1e-5, xVal / EVal);
 
-    // -------------------------
-    // Early Plateau Fix
-    // -------------------------
     if (xVal < 50)
         S += 0.1 * dt;
 
@@ -114,7 +98,6 @@ var tick = (elapsedTime, multiplier) =>
     let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.003*D;
 
     D += dD * dt;
-
     if (D < D_MIN)
         D = D_MIN;
 
@@ -128,60 +111,39 @@ var tick = (elapsedTime, multiplier) =>
     E = BigNumber.from(Math.min(Math.max(EVal + dE*dt, E_MIN), E_SOFTCAP));
     S += dS * dt;
 
-    currency.value = BigNumber.from(currency.value.toNumber() + x.toNumber()*dt);
+    currency.value += x * BigNumber.from(dt);
 
-    // =====================
-    // TAU CALCULATION
-    // =====================
+    // ==========================
+    // SMOOTH TAU EXPLOSION
+    // ==========================
 
-    let tauBase = currency.value.pow(0.18);
-
+    let tauBase = currency.value.max(BigNumber.ONE).pow(0.18);
     let tauFinal = tauBase;
 
     if (milestoneExplosion.level > 0)
     {
-        // TRUE tau-space
         let logTau = tauBase.log10().toNumber();
 
-        // Explosion centered between e200–e300 tau
+        // Smooth Gaussian resonance
         let center = 250;
-        let width = 40;
-        let strength = 50;
+        let width = 80;
+        let peakStrength = 35;
 
-        // Publication fuel (controlled)
-        let pubFuel = 1 + Math.sqrt(theory.publicationCount)*0.04;
-        if (pubFuel > 1.4)
-            pubFuel = 1.4;
+        let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.03;
 
-        // Quartic curve
-        let dist = (logTau - center)/width;
-        let burst = strength*pubFuel/(1 + dist*dist*dist*dist);
+        let gaussian = Math.exp(-Math.pow((logTau - center)/width, 2));
 
-        // Decay after e400
-        let decay = 1;
+        // Soft late-game taper (never zero)
+        let lateScale = 1 / (1 + Math.pow(logTau/900, 2));
 
-        if (logTau > 400)
-            decay = 1/(1 + (logTau-400)*(logTau-400)/3000);
+        let totalBoost = peakStrength * gaussian * pubFuel * lateScale;
 
-        // Useless past e500
-        if (logTau > 500)
-            decay = 0;
+        let boost = BigNumber.from(10).pow(totalBoost);
 
-        let boost = BigNumber.from(10).pow(burst*decay);
-
-        tauFinal = tauBase * boost;
+        tauFinal *= boost;
     }
 
-let tau;
-
-if (isDonationLow) {
-    tau = currencies.value.usdc_30d;
-    ...
-}
-
-tauValue = tau;
-
-    tauCurrency.value = baseTau;
+    tauCurrency.value = tauFinal;
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
