@@ -121,27 +121,28 @@ var tick = (elapsedTime, multiplier) =>
     let tauFinal = tauBase;
 
     if (milestoneExplosion.level > 0)
-    {
-        let logTau = tauBase.log10().toNumber();
+{
+    let logTau = tauBase.log10().toNumber();
 
-        // Smooth Gaussian resonance
-        let center = 250;
-        let width = 80;
-        let peakStrength = 35;
+    let center = 250;
+    let width = 80;
+    let peakStrength = 25;
 
-        let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.03;
+    let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.02;
 
-        let gaussian = Math.exp(-Math.pow((logTau - center)/width, 2));
+    let dist = (logTau - center) / width;
 
-        // Soft late-game taper (never zero)
-        let lateScale = 1 / (1 + Math.pow(logTau/900, 2));
+    // Gaussian but bounded
+    let resonance = Math.exp(-dist * dist);
 
-        let totalBoost = peakStrength * gaussian * pubFuel * lateScale;
+    // Soft scaling instead of exponential explosion
+    let additiveBoost = peakStrength * resonance * pubFuel;
 
-        let boost = BigNumber.from(10).pow(totalBoost);
+    // Add to log-space instead of multiplying huge powers
+    let newLogTau = logTau + additiveBoost;
 
-        tauFinal *= boost;
-    }
+    tauFinal = BigNumber.from(10).pow(newLogTau);
+}
 
     tauCurrency.value = tauFinal;
 
