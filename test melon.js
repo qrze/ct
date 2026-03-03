@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 3.4;
+var version = 3.5;
 
 requiresGameVersion("1.4.33");
 
@@ -27,7 +27,7 @@ var E = BigNumber.ONE;
 var S = 1.1;
 var D = 0;
 
-var a, b, c, alpha;
+var a1, a2, c1, alpha;
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 var milestoneExplosion;
 
@@ -36,26 +36,31 @@ var init = () =>
     currency = theory.createCurrency();
     tauCurrency = theory.createCurrency("τ", "\\tau");
 
-    a = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
-    a.getDescription = (_) => Utils.getMath("a = " + (0.1 + 0.05*a.level).toFixed(2));
-    a.getInfo = (amt) => Utils.getMath("a = " + (0.1 + 0.05*(a.level + amt)).toFixed(2));
+    // a1
+    a1 = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
+    a1.getDescription = (_) => Utils.getMath("a_1 = " + (0.1 + 0.05*a1.level).toFixed(2));
+    a1.getInfo = (amt) => Utils.getMath("a_1 = " + (0.1 + 0.05*(a1.level + amt)).toFixed(2));
 
-    b = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
-    b.getDescription = (_) => Utils.getMath("b = " + (0.05/(1 + b.level)).toFixed(3));
-    b.getInfo = (amt) => Utils.getMath("b = " + (0.05/(1 + b.level + amt)).toFixed(3));
+    // a2
+    a2 = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
+    a2.getDescription = (_) => Utils.getMath("a_2 = " + (0.05/(1 + a2.level)).toFixed(3));
+    a2.getInfo = (amt) => Utils.getMath("a_2 = " + (0.05/(1 + a2.level + amt)).toFixed(3));
 
-    c = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
-    c.getDescription = (_) => Utils.getMath("c = " + (0.05 + 0.03*c.level).toFixed(3));
-    c.getInfo = (amt) => Utils.getMath("c = " + (0.05 + 0.03*(c.level + amt)).toFixed(3));
+    // c1
+    c1 = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
+    c1.getDescription = (_) => Utils.getMath("c_1 = " + (0.05 + 0.03*c1.level).toFixed(3));
+    c1.getInfo = (amt) => Utils.getMath("c_1 = " + (0.05 + 0.03*(c1.level + amt)).toFixed(3));
 
     alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
     alpha.getDescription = (_) => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
     alpha.getInfo = (amt) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amt)).toFixed(3));
 
+    // Permanent upgrades
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
+    // Milestones
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Resonance doubles growth near equilibrium";
 
@@ -73,15 +78,15 @@ var tick = (elapsedTime, multiplier) =>
 {
     let dt = elapsedTime * multiplier;
 
-    let A = 0.1 + 0.05*a.level;
-    let B = 0.05 / (1 + b.level);
-    let C = 0.05 + 0.03*c.level;
+    let A = 0.1 + 0.05*a1.level;
+    let B = 0.05 / (1 + a2.level);
+    let C = 0.05 + 0.03*c1.level;
     let Alpha = 1 + 0.02*alpha.level;
 
     let xVal = Math.min(Math.max(x.toNumber(), X_MIN), X_SOFTCAP);
     let EVal = Math.min(Math.max(E.toNumber(), E_MIN), E_SOFTCAP);
     let ratio = Math.max(1e-50, xVal / EVal);
-    let ratio = Math.min(1, xVal / EVal);
+    ratio = Math.min(1, xVal / EVal);
 
     if (xVal < 50)
         S += 0.1 * dt;
@@ -109,66 +114,47 @@ var tick = (elapsedTime, multiplier) =>
         growth *= 2;
 
     x = BigNumber.from(Math.min(Math.max(xVal + growth*dt, X_MIN), X_SOFTCAP));
+
     let raw_dE = A * Math.pow(x, Alpha) - B * E;
+    if (milestoneEquilibriumBoost.level > 0)
+        raw_dE += Math.log(x + 1);
 
-if (milestoneEquilibriumBoost.level > 0)
-    raw_dE += Math.log(x + 1);
+    if (raw_dE > 1e8)
+        raw_dE = 1e8;
+    if (raw_dE < -1e8)
+        raw_dE = -1e8;
 
-// clamp dE to prevent overflow
-if (raw_dE > 1e8)
-    raw_dE = 1e8;
+    E += raw_dE * dt;
 
-if (raw_dE < -1e8)
-    raw_dE = -1e8;
+    if (E > E_SOFTCAP)
+        E = E_SOFTCAP;
+    if (E < E_MIN)
+        E = E_MIN;
 
-E += raw_dE * dt;
-
-// hard clamp E itself
-if (E > E_SOFTCAP)
-    E = E_SOFTCAP;
-
-if (E < E_MIN)
-    E = E_MIN;
     S += dS * dt;
 
     currency.value += x * BigNumber.from(dt);
 
-    // =============
     // TAU EXPLOSION
-    // =============
-
     let tauBase = currency.value.max(BigNumber.ONE).pow(0.18);
     let tauFinal = tauBase;
 
     if (milestoneExplosion.level > 0)
-{
-    let logTau = tauBase.log10().toNumber();
-
-    let center = 250;
-    let width = 80;
-    let peakStrength = 25;
-
-    let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.02;
-
-    let dist = (logTau - center) / width;
-
-    // Gaussian but bounded
-    let resonance = Math.exp(-dist * dist);
-
-    // Soft scaling instead of exponential explosion
-    let additiveBoost = peakStrength * resonance * pubFuel;
-
-    // Add to log-space instead of multiplying huge powers
-    let newLogTau = logTau + additiveBoost;
-    newLogTau = Math.min(newLogTau, 308);
-    tauFinal = BigNumber.from(10).pow(newLogTau);
-    // Smoothly cap the growth
-    if (newLogTau > 300) {
-        newLogTau = 300 + Math.log10(1 + (newLogTau - 300) * 0.1);
+    {
+        let logTau = tauBase.log10().toNumber();
+        let center = 250;
+        let width = 80;
+        let peakStrength = 25;
+        let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.02;
+        let dist = (logTau - center) / width;
+        let resonance = Math.exp(-dist * dist);
+        let additiveBoost = peakStrength * resonance * pubFuel;
+        let newLogTau = logTau + additiveBoost;
+        newLogTau = Math.min(newLogTau, 308);
+        if (newLogTau > 300)
+            newLogTau = 300 + Math.log10(1 + (newLogTau - 300) * 0.1);
+        tauFinal = BigNumber.from(10).pow(newLogTau);
     }
-
-    tauFinal = BigNumber.from(10).pow(newLogTau);
-}
 
     tauCurrency.value = tauFinal;
 
@@ -181,14 +167,14 @@ var getPrimaryEquation = () =>
     "\\dot{x} = \\frac{Sx(1 - x/E)}{1+\\lambda D}";
 
 var getSecondaryEquation = () =>
-    "\\dot{E} = ax^\\alpha - bE";
+    "\\dot{E} = a_1 x^{\\alpha} - a_2 E";
 
 var getTertiaryEquation = () => {
     let Sval = (typeof S.toNumber === "function") ? S.toNumber() : S;
     let Dval = (typeof D.toNumber === "function") ? D.toNumber() : D;
-
     return "S=" + Sval.toFixed(2) + ", D=" + Dval.toFixed(2);
 };
+
 var getPublicationMultiplier = (tau) =>
     tau.pow(0.85);
 
