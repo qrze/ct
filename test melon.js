@@ -109,7 +109,26 @@ var tick = (elapsedTime, multiplier) =>
         growth *= 2;
 
     x = BigNumber.from(Math.min(Math.max(xVal + growth*dt, X_MIN), X_SOFTCAP));
-    E = BigNumber.from(Math.min(Math.max(EVal + dE*dt, E_MIN), E_SOFTCAP));
+    let raw_dE = A * Math.pow(x, Alpha) - B * E;
+
+if (milestoneEquilibriumBoost.level > 0)
+    raw_dE += Math.log(x + 1);
+
+// clamp dE to prevent overflow
+if (raw_dE > 1e8)
+    raw_dE = 1e8;
+
+if (raw_dE < -1e8)
+    raw_dE = -1e8;
+
+E += raw_dE * dt;
+
+// hard clamp E itself
+if (E > E_SOFTCAP)
+    E = E_SOFTCAP;
+
+if (E < E_MIN)
+    E = E_MIN;
     S += dS * dt;
 
     currency.value += x * BigNumber.from(dt);
