@@ -172,7 +172,14 @@ var tick = (elapsedTime, multiplier) =>
         tauFinal = tauBase * boost;
     }
 
-    tau.value = tauFinal;
+let tau;
+
+if (isDonationLow) {
+    tau = currencies.value.usdc_30d;
+    ...
+}
+
+tauValue = tau;
 
     tauCurrency.value = baseTau;
 
