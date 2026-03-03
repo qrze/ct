@@ -86,7 +86,7 @@ var tick = (elapsedTime, multiplier) =>
 
     let xVal = Math.min(Math.max(x.toNumber(), X_MIN), X_SOFTCAP);
     let EVal = Math.min(Math.max(E.toNumber(), E_MIN), E_SOFTCAP);
-    let ratio = Math.max(1e-50, xVal / EVal);
+    let ratio = Math.max(1e-40, xVal / EVal);
     ratio = Math.min(1, xVal / EVal);
 
     if (xVal < 50)
