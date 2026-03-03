@@ -5,11 +5,14 @@ import { Utils } from "./api/Utils";
 
 var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
-var description = "Stable equilibrium growth with stress dynamics.";
+var description = "Stable equilibrium growth with hidden resonance dynamics.";
 var authors = "qrze, melon";
-var version = 1;
+var version = 2.1;
 
 requiresGameVersion("1.4.33");
+
+var currency;
+var tauCurrency;
 
 var X_SOFTCAP = 1e6;
 var E_SOFTCAP = 1e6;
@@ -24,10 +27,12 @@ var D = 0;
 
 var a, b, c, alpha;
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
+var milestoneExplosion;
 
-var init = () => {
-
+var init = () =>
+{
     currency = theory.createCurrency();
+    tauCurrency = theory.createCurrency("τ", "\\tau");
 
     // a
     {
@@ -57,12 +62,12 @@ var init = () => {
         alpha.getInfo = (amount) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amount)).toFixed(3));
     }
 
-    // Permanent upgrades
+    // Permanent Upgrades
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-    // Milestones (default cost — avoids LinearCost parse issues)
+    // Milestones
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Resonance doubles growth near equilibrium";
 
@@ -71,10 +76,13 @@ var init = () => {
 
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
+
+    milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
+    milestoneExplosion.description = "System begins to resonate at extreme τ";
 };
 
-var tick = (elapsedTime, multiplier) => {
-
+var tick = (elapsedTime, multiplier) =>
+{
     let dt = elapsedTime * multiplier;
 
     let A = 0.1 + 0.05*a.level;
@@ -86,23 +94,30 @@ var tick = (elapsedTime, multiplier) => {
     let EVal = Math.min(Math.max(E.toNumber(), E_MIN), E_SOFTCAP);
     let ratio = Math.max(1e-5, xVal / EVal);
 
-    if (xVal < 10)
-        S += 0.05;
+    // -------------------------
+    // Early Plateau Fix
+    // -------------------------
+    if (xVal < 50)
+        S += 0.1 * dt;
 
     let dE = A * Math.pow(xVal, Alpha) - B * EVal;
+
     if (milestoneEquilibriumBoost.level > 0)
         dE += Math.log(xVal + 1);
 
     let dS = C - 0.1*Math.abs(ratio - 1) - 0.05*D;
+
     if (milestoneStressFeedback.level > 0)
         dS += 0.05*Math.sqrt(D);
 
-    let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.005*D;
+    let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.003*D;
+
     D += dD * dt;
+
     if (D < D_MIN)
         D = D_MIN;
 
-    let growth = Math.max(0.01, S * xVal * (1 - xVal/EVal));
+    let growth = Math.max(0.02, S * xVal * (1 - xVal/EVal));
     growth /= (1 + 0.05*D);
 
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
@@ -114,13 +129,71 @@ var tick = (elapsedTime, multiplier) => {
 
     currency.value = BigNumber.from(currency.value.toNumber() + x.toNumber()*dt);
 
+    // -------------------------
+    // Tau Calculation
+    // -------------------------
+    let baseTau = currency.value.pow(0.18);
+
+    if (milestoneExplosion.level > 0)
+    {
+        let logTau = baseTau.log10().toNumber();
+
+        let center = 250;
+        let width = 60;
+        let baseStrength = 70;
+
+        let pubCount = theory.publicationCount;
+        let fuel = 1 + Math.sqrt(pubCount) * 0.05;
+        if (fuel > 1.5)
+            fuel = 1.5;
+
+        let strength = baseStrength * fuel;
+
+        let distance = (logTau - center) / width;
+
+        let burst =
+            strength /
+            (1 + distance * distance * distance * distance);
+
+        let decay = 1;
+
+        if (logTau > 400)
+            decay =
+                1 /
+                (1 + (logTau - 400) *
+                     (logTau - 400) / 5000);
+
+        if (logTau > 500)
+            decay = 0;
+
+        let finalBoost = burst * decay;
+
+        let multiplier =
+            BigNumber.from(10).pow(finalBoost);
+
+        baseTau = baseTau * multiplier;
+    }
+
+    tauCurrency.value = baseTau;
+
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
     theory.invalidateTertiaryEquation();
 };
 
-var getPrimaryEquation = () => "\\dot{x} = Sx(1 - x/E)/(1+λD)";
-var getSecondaryEquation = () => "\\dot{E} = ax^α - bE";
-var getTertiaryEquation = () => "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
+var getPrimaryEquation = () =>
+    "\\dot{x} = \\frac{Sx(1 - x/E)}{1+\\lambda D}";
+
+var getSecondaryEquation = () =>
+    "\\dot{E} = ax^\\alpha - bE";
+
+var getTertiaryEquation = () =>
+    "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
+
+var getPublicationMultiplier = (tau) =>
+    tau.pow(0.85);
+
+var getPublicationFormula = () =>
+    "\\tau = \\rho^{0.18}";
 
 init();
