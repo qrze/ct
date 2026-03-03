@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 3.5;
+var version = 3.6;
 
 requiresGameVersion("1.4.33");
 
@@ -51,6 +51,7 @@ var init = () =>
     c1.getDescription = (_) => Utils.getMath("c_1 = " + (0.05 + 0.03*c1.level).toFixed(3));
     c1.getInfo = (amt) => Utils.getMath("c_1 = " + (0.05 + 0.03*(c1.level + amt)).toFixed(3));
 
+    // alpha
     alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
     alpha.getDescription = (_) => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
     alpha.getInfo = (amt) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amt)).toFixed(3));
@@ -92,20 +93,16 @@ var tick = (elapsedTime, multiplier) =>
         S += 0.1 * dt;
 
     let dE = A * Math.pow(xVal, Alpha) - B * EVal;
-
     if (milestoneEquilibriumBoost.level > 0)
         dE += Math.log(xVal + 1);
 
     let dS = C - 0.05*Math.abs(ratio-1) * (x/(x+10));
-
     if (milestoneStressFeedback.level > 0)
         dS += 0.05*Math.sqrt(D);
 
     let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.003*D;
-
     D += dD * dt;
-    if (D < D_MIN)
-        D = D_MIN;
+    if (D < D_MIN) D = D_MIN;
 
     let growth = Math.max(0.02, S * xVal * (1 - xVal/EVal));
     growth /= (1 + 0.05*D);
@@ -119,23 +116,21 @@ var tick = (elapsedTime, multiplier) =>
     if (milestoneEquilibriumBoost.level > 0)
         raw_dE += Math.log(x + 1);
 
-    if (raw_dE > 1e8)
-        raw_dE = 1e8;
-    if (raw_dE < -1e8)
-        raw_dE = -1e8;
+    if (raw_dE > 1e8) raw_dE = 1e8;
+    if (raw_dE < -1e8) raw_dE = -1e8;
 
     E += raw_dE * dt;
 
-    if (E > E_SOFTCAP)
-        E = E_SOFTCAP;
-    if (E < E_MIN)
-        E = E_MIN;
+    if (E > E_SOFTCAP) E = E_SOFTCAP;
+    if (E < E_MIN) E = E_MIN;
 
     S += dS * dt;
 
     currency.value += x * BigNumber.from(dt);
 
+    // ====================
     // TAU EXPLOSION
+    // ====================
     let tauBase = currency.value.max(BigNumber.ONE).pow(0.18);
     let tauFinal = tauBase;
 
@@ -163,6 +158,33 @@ var tick = (elapsedTime, multiplier) =>
     theory.invalidateTertiaryEquation();
 };
 
+// ====================
+// PERSISTENT STATE
+// ====================
+var getInternalState = () => {
+    return [
+        x.toString(),
+        E.toString(),
+        S.toString(),
+        D.toString(),
+        tauCurrency.value.toString()
+    ].join(" ");
+};
+
+var setInternalState = (state) => {
+    let values = state.split(" ");
+    if (values.length >= 5) {
+        x = BigNumber.from(values[0]);
+        E = BigNumber.from(values[1]);
+        S = parseFloat(values[2]);
+        D = parseFloat(values[3]);
+        tauCurrency.value = BigNumber.from(values[4]);
+    }
+};
+
+// ====================
+// EQUATIONS
+// ====================
 var getPrimaryEquation = () =>
     "\\dot{x} = \\frac{Sx(1 - x/E)}{1+\\lambda D}";
 
