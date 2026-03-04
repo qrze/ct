@@ -102,8 +102,8 @@ var tick = (elapsedTime, multiplier) =>
 
     let growth = beta.toNumber() * baseGrowth;
 
-    x = x.plus(growth * elapsedTime);
-    E = E.plus(dE * elapsedTime);
+    x = x.plus(BigNumber.from(growth).times(elapsedTime));
+    E = E.plus(BigNumber.from(dE).times(elapsedTime));
     S += dS * elapsedTime;
 
     currency.value = currency.value.plus(x.times(dt));
