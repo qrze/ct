@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon (refactored)";
-var version = 5.0;
+var version = 5.1;
 
 requiresGameVersion("1.4.33");
 
@@ -31,38 +31,35 @@ var init = () =>
 {
     currency = theory.createCurrency();
 
-    // --------------------
-    // Regular Upgrades
-    // --------------------
+    // ---------------- Upgrades ----------------
 
     a1 = theory.createUpgrade(0, currency, new ExponentialCost(5, 2));
-    a1.getDescription = _ => Utils.getMath("a_1 = " + (0.1 + 0.05*a1.level).toFixed(2));
+    a1.getDescription = _ =>
+        Utils.getMath("a_1 = " + (0.1 + 0.05*a1.level).toFixed(2));
 
     a2 = theory.createUpgrade(1, currency, new ExponentialCost(10, 2.2));
-    a2.getDescription = _ => 
-        Utils.getMath("a_2 = " + (0.05 * 0.9^{" + a2.level + "}).toFixed(4)");
+    a2.getDescription = _ =>
+        Utils.getMath("a_2 = 0.05 \\cdot 0.9^{" + a2.level + "}");
 
     c1 = theory.createUpgrade(2, currency, new ExponentialCost(20, 2.5));
-    c1.getDescription = _ => Utils.getMath("c_1 = " + (0.05 + 0.03*c1.level).toFixed(3));
+    c1.getDescription = _ =>
+        Utils.getMath("c_1 = " + (0.05 + 0.03*c1.level).toFixed(3));
 
     alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
-    alpha.getDescription = _ => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
+    alpha.getDescription = _ =>
+        Utils.getMath("\\alpha = " + (1 + 0.02*alpha.level).toFixed(3));
 
-    // Balanced β upgrade
     c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, 5));
-    c2.getDescription = _ => Utils.getMath("c_2 = 1.5^{" + c2.level + "}");
+    c2.getDescription = _ =>
+        Utils.getMath("\\beta = 1.5^{" + c2.level + "}");
 
-    // --------------------
-    // Publication
-    // --------------------
+    // ---------------- Publication ----------------
 
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-    // --------------------
-    // Milestones
-    // --------------------
+    // ---------------- Milestones ----------------
 
     theory.setMilestoneCost(new ExponentialCost(5, 2));
 
@@ -81,75 +78,94 @@ var tick = (elapsedTime, multiplier) =>
     let dt = BigNumber.from(elapsedTime * multiplier);
 
     // Upgrade values
-    let A = BigNumber.from(0.1 + 0.05*a1.level);
-    let B = BigNumber.from(0.05).times(
-        BigNumber.from(0.9).pow(a2.level)
-    );
-    let C = BigNumber.from(0.05 + 0.03*c1.level);
-    let Alpha = BigNumber.from(1 + 0.02*alpha.level);
+    let A = BigNumber.from(0.1 + 0.05 * a1.level);
+    let B = BigNumber.from(0.05)
+        .times(BigNumber.from(0.9).pow(a2.level));
+    let C = BigNumber.from(0.05 + 0.03 * c1.level);
+    let Alpha = BigNumber.from(1 + 0.02 * alpha.level);
     let beta = ONE_POINT_FIVE.pow(c2.level);
 
-    // Safety clamp for E
-    let safeE = E.max(SAFE_E_FLOOR);
+    let safeE = E.compareTo(SAFE_E_FLOOR) > 0 ? E : SAFE_E_FLOOR;
     let ratio = x.div(safeE);
 
-    // --------------------
-    // dE
-    // --------------------
+    // ---------------- dE ----------------
     let dE = A.times(x.pow(Alpha)).minus(B.times(E));
 
     if (milestoneEquilibriumBoost.level > 0)
-        dE = dE.plus(x.plus(ONE).log());
+    {
+        let logTerm = Math.log(x.plus(ONE).toNumber());
+        dE = dE.plus(BigNumber.from(logTerm));
+    }
 
-    // --------------------
-    // dS
-    // --------------------
-    let dS = C.minus(BigNumber.from(0.05).times(ratio.minus(ONE).abs()));
+    // ---------------- dS ----------------
+    let ratioDiff = ratio.minus(ONE).toNumber();
+    let absValue = Math.abs(ratioDiff);
+
+    let dS = C.minus(BigNumber.from(0.05 * absValue));
 
     if (milestoneStressFeedback.level > 0)
-        dS = dS.plus(BigNumber.from(0.05).times(D.sqrt()));
+    {
+        let sqrtTerm = Math.sqrt(D.toNumber());
+        dS = dS.plus(BigNumber.from(0.05 * sqrtTerm));
+    }
 
-    // --------------------
-    // dD (bounded stress system)
-    // --------------------
+    // ---------------- dD ----------------
     let dD = BigNumber.from(0.1)
         .times(ratio.pow(2))
         .minus(BigNumber.from(0.1).times(S))
         .minus(BigNumber.from(0.003).times(D));
 
-    D = D.plus(dD.times(dt)).max(BigNumber.from(0.1)).min(BigNumber.from(100));
+    D = D.plus(dD.times(dt));
 
-    // --------------------
-    // Logistic Growth
-    // --------------------
+    if (D.compareTo(BigNumber.from(0.1)) < 0)
+        D = BigNumber.from(0.1);
+
+    if (D.compareTo(BigNumber.from(100)) > 0)
+        D = BigNumber.from(100);
+
+    // ---------------- Logistic Growth ----------------
     let logistic = S.times(x)
         .times(ONE.minus(x.div(safeE)))
         .div(ONE.plus(DELTA.times(D)));
 
-    logistic = logistic.max(BigNumber.from(0.02));
+    if (logistic.compareTo(BigNumber.from(0.02)) < 0)
+        logistic = BigNumber.from(0.02);
 
-    if (milestoneResonance.level > 0 &&
-        ratio.gt(0.95) && ratio.lt(1.05))
+    if (milestoneResonance.level > 0)
     {
-        logistic = logistic.times(2);
+        if (ratio.compareTo(BigNumber.from(0.95)) > 0 &&
+            ratio.compareTo(BigNumber.from(1.05)) < 0)
+        {
+            logistic = logistic.times(2);
+        }
     }
 
     let growth = beta.times(logistic);
 
-    // --------------------
-    // Apply updates
-    // --------------------
+    // ---------------- Apply updates ----------------
     x = x.plus(growth.times(dt));
-    E = E.plus(dE.times(dt)).max(SAFE_E_FLOOR);
-    S = S.plus(dS.times(dt)).max(BigNumber.from(0.1));
+    E = E.plus(dE.times(dt));
+
+    if (E.compareTo(SAFE_E_FLOOR) < 0)
+        E = SAFE_E_FLOOR;
+
+    S = S.plus(dS.times(dt));
+
+    if (S.compareTo(BigNumber.from(0.1)) < 0)
+        S = BigNumber.from(0.1);
 
     currency.value = currency.value.plus(x.times(dt));
 
     theory.invalidateTertiaryEquation();
 };
 
+// ---------------- Save State ----------------
+
 var getInternalState = () =>
-    [x.toString(), E.toString(), S.toString(), D.toString()].join(" ");
+    x.toString() + " " +
+    E.toString() + " " +
+    S.toString() + " " +
+    D.toString();
 
 var setInternalState = (state) =>
 {
@@ -163,9 +179,7 @@ var setInternalState = (state) =>
     }
 };
 
-// --------------------
-// Equations
-// --------------------
+// ---------------- Equations ----------------
 
 var getPrimaryEquation = () =>
     "\\dot{x} = \\beta \\frac{Sx(1 - x/E)}{1+0.1D}";
