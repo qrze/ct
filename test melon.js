@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.2;
+var version = 4.3;
 
 requiresGameVersion("1.4.33");
 
@@ -106,7 +106,9 @@ var tick = (elapsedTime, multiplier) =>
     E = E.plus(BigNumber.from(dE).times(elapsedTime));
     S += dS * elapsedTime;
 
-    currency.value = currency.value.plus(x.times(dt));
+    currency.value = currency.value.plus(
+        BigNumber.from(x).times(dt)
+        );
 
     tauCurrency.value = currency.value.max(BigNumber.ONE).pow(0.18);
 
