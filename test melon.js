@@ -107,8 +107,8 @@ var tick = (elapsedTime, multiplier) =>
     S += dS * elapsedTime;
 
     currency.value = currency.value.plus(
-        BigNumber.from(x).times(dt)
-        );
+    x.times(dt)
+);
 
     tauCurrency.value = currency.value.max(BigNumber.ONE).pow(0.18);
 
