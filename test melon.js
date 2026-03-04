@@ -136,7 +136,7 @@ var getPrimaryEquation = () =>
     "\\dot{x} = \\beta \\frac{Sx(1 - x/E)}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
-    "\\\\ \\\\ \\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
+    "\\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
 
 var getTertiaryEquation = () =>
     "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
