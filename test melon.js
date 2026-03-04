@@ -27,7 +27,7 @@ var E = BigNumber.ONE;
 var S = 1.1;
 var D = 0;
 
-var a1, a2, c1, alpha;
+var a1, a2, c1, c2, alpha;
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
 var milestoneExplosion;
 
@@ -51,17 +51,20 @@ var init = () =>
     c1.getDescription = (_) => Utils.getMath("c_1 = " + (0.05 + 0.03*c1.level).toFixed(3));
     c1.getInfo = (amt) => Utils.getMath("c_1 = " + (0.05 + 0.03*(c1.level + amt)).toFixed(3));
 
+    // c2
+    c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, 1e5));
+    c2.getDescription = (_) => Utils.getMath("c_2 = " + c2.level + " (×2 income)");
+    c2.getInfo = (amt) => Utils.getMath("Income ×2^{" + (c2.level + amt) + "}");
+
     // alpha
     alpha = theory.createUpgrade(3, currency, new ExponentialCost(50, 3));
     alpha.getDescription = (_) => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
     alpha.getInfo = (amt) => Utils.getMath("α = " + (1 + 0.02*(alpha.level + amt)).toFixed(3));
 
-    // Permanent upgrades
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-    // Milestones
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Resonance doubles growth near equilibrium";
 
@@ -84,118 +87,71 @@ var tick = (elapsedTime, multiplier) =>
     let C = 0.05 + 0.03*c1.level;
     let Alpha = 1 + 0.02*alpha.level;
 
-    let xVal = Math.min(Math.max(x.toNumber(), X_MIN), X_SOFTCAP);
-    let EVal = Math.min(Math.max(E.toNumber(), E_MIN), E_SOFTCAP);
-    let ratio = Math.max(1e-15, xVal / EVal);
-    ratio = Math.min(1, xVal / EVal);
+    let beta = BigNumber.from(2).pow(c2.level); // NEW
 
-    if (xVal < 50)
-        S += 0.1 * dt;
+    let xVal = x.toNumber();
+    let EVal = E.toNumber();
+    let ratio = Math.max(1e-50, xVal / EVal);
 
+    // Milestone Equations
     let dE = A * Math.pow(xVal, Alpha) - B * EVal;
+
     if (milestoneEquilibriumBoost.level > 0)
         dE += Math.log(xVal + 1);
 
-    let dS = C - 0.05*Math.abs(ratio-1) * (x/(x+10));
+    let dS = C - 0.05*Math.abs(ratio-1);
+
     if (milestoneStressFeedback.level > 0)
         dS += 0.05*Math.sqrt(D);
 
     let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.003*D;
+
     D += dD * dt;
     if (D < D_MIN) D = D_MIN;
 
     let growth = Math.max(0.02, S * xVal * (1 - xVal/EVal));
-    growth /= (1 + 0.05*D);
 
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
         growth *= 2;
 
-    x = BigNumber.from(Math.min(Math.max(xVal + growth*dt, X_MIN), X_SOFTCAP));
-
-    let raw_dE = A * Math.pow(x, Alpha) - B * E;
-    if (milestoneEquilibriumBoost.level > 0)
-        raw_dE += Math.log(x + 1);
-
-    if (raw_dE > 1e8) raw_dE = 1e8;
-    if (raw_dE < -1e8) raw_dE = -1e8;
-
-    E += raw_dE * dt;
-
-    if (E > E_SOFTCAP) E = E_SOFTCAP;
-    if (E < E_MIN) E = E_MIN;
-
+    x += growth * dt;
+    E += dE * dt;
     S += dS * dt;
 
-    currency.value += x * BigNumber.from(dt);
+    // Currency income with c2 multiplier
+    currency.value += x * beta * BigNumber.from(dt);
 
-    // ====================
-    // TAU EXPLOSION
-    // ====================
+    // Tau base
     let tauBase = currency.value.max(BigNumber.ONE).pow(0.18);
-    let tauFinal = tauBase;
-
-    if (milestoneExplosion.level > 0)
-    {
-        let logTau = tauBase.log10().toNumber();
-        let center = 250;
-        let width = 80;
-        let peakStrength = 25;
-        let pubFuel = 1 + Math.sqrt(theory.publicationCount) * 0.02;
-        let dist = (logTau - center) / width;
-        let resonance = Math.exp(-dist * dist);
-        let additiveBoost = peakStrength * resonance * pubFuel;
-        let newLogTau = logTau + additiveBoost;
-        newLogTau = Math.min(newLogTau, 308);
-        if (newLogTau > 300)
-            newLogTau = 300 + Math.log10(1 + (newLogTau - 300) * 0.1);
-        tauFinal = BigNumber.from(10).pow(newLogTau);
-    }
-
-    tauCurrency.value = tauFinal;
+    tauCurrency.value = tauBase;
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
     theory.invalidateTertiaryEquation();
 };
 
-// ====================
-// PERSISTENT STATE
-// ====================
-var getInternalState = () => {
-    return [
-        x.toString(),
-        E.toString(),
-        S.toString(),
-        D.toString(),
-        tauCurrency.value.toString()
-    ].join(" ");
-};
+// PERSIST STATE
+var getInternalState = () =>
+    [x.toString(), E.toString(), S.toString(), D.toString()].join(" ");
 
 var setInternalState = (state) => {
-    let values = state.split(" ");
-    if (values.length >= 5) {
-        x = BigNumber.from(values[0]);
-        E = BigNumber.from(values[1]);
-        S = parseFloat(values[2]);
-        D = parseFloat(values[3]);
-        tauCurrency.value = BigNumber.from(values[4]);
+    let v = state.split(" ");
+    if (v.length >= 4) {
+        x = BigNumber.from(v[0]);
+        E = BigNumber.from(v[1]);
+        S = parseFloat(v[2]);
+        D = parseFloat(v[3]);
     }
 };
 
-// ====================
-// EQUATIONS
-// ====================
 var getPrimaryEquation = () =>
     "\\dot{x} = \\frac{Sx(1 - x/E)}{1+\\lambda D}";
 
 var getSecondaryEquation = () =>
-    "\\dot{E} = a_1 x^{\\alpha} - a_2 E";
+    "\\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
 
-var getTertiaryEquation = () => {
-    let Sval = (typeof S.toNumber === "function") ? S.toNumber() : S;
-    let Dval = (typeof D.toNumber === "function") ? D.toNumber() : D;
-    return "S=" + Sval.toFixed(2) + ", D=" + Dval.toFixed(2);
-};
+var getTertiaryEquation = () =>
+    "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
 
 var getPublicationMultiplier = (tau) =>
     tau.pow(0.85);
