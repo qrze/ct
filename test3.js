@@ -1,4 +1,4 @@
-import { ExponentialCost } from "./api/Costs";
+import { ExponentialCost, LinearCost } from "./api/Costs";
 import { BigNumber } from "./api/BigNumber";
 import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.6;
+var version = 4.7;
 
 requiresGameVersion("1.4.33");
 
@@ -43,14 +43,14 @@ var init = () =>
     alpha.getDescription = _ => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
 
     // c2 (β upgrade)
-    c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, BigNumber.from(1e5)));
+    c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, 1e5));
     c2.getDescription = _ => Utils.getMath("c_2 = 1.5^{" + c2.level + "}");
 
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-};
+}
 
     ///////////////////////
     //// Milestone upgrades
@@ -58,19 +58,19 @@ var init = () =>
 {
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Double growth near equilibrium";
-    milestoneResonance.info = "When 0.95 < \\frac{x/E} 1.05, the x is doubled."
+    milestoneResonance.info = "When 0.95 < \\frac{x}{E} < 1.05, the x is doubled."
 }
 
 {
     milestoneEquilibriumBoost = theory.createMilestoneUpgrade(1, 1);
     milestoneEquilibriumBoost.description = "Add log(x) to dE/dt";
-    milestoneEquilibriumBoost.info = "\\dot{E} = a1x^\\alpha - a2E becomes \\dot{E} = a1x^\\alpha - a2E + log(x + 1)"
+    milestoneEquilibriumBoost.info = "\\dot{E} = a_1 x^\\alpha - a_2 E becomes \\dot{E} = a1x^\\alpha - a2E + log(x + 1)"
 }
 
 {
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
-    milestoneStressFeedback.info = "//dot{S} = c1 - 0.05*\\Math.abs{\\frac{x/E} - 1} + 0.05*\\Math.sqrt{D}"
+    milestoneStressFeedback.info = "\\dot{S} = c_1 - 0.05\\left|\\frac{x}{E}-1\\right|} + 0.05\\sqrt{D}"
 }
 
 {
@@ -114,7 +114,7 @@ var tick = (elapsedTime, multiplier) =>
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
         baseGrowth *= 2;
 
-    let growth = beta.toNumber() * baseGrowth;
+    let growth = beta * baseGrowth;
 
 x = x.plus(BigNumber.from(growth * elapsedTime));
 E = E.plus(BigNumber.from(dE).times(elapsedTime));
@@ -149,7 +149,7 @@ var setInternalState = (state) =>
 
 // Equations
 var getPrimaryEquation = () =>
-    "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x/E})}{1+\\delta D}";
+    "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x}{E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
     "\\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
