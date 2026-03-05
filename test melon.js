@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.4;
+var version = 4.5;
 
 requiresGameVersion("1.4.33");
 
@@ -43,11 +43,7 @@ var init = () =>
     alpha.getDescription = _ => Utils.getMath("α = " + (1 + 0.02*alpha.level).toFixed(3));
 
     // c2 (β upgrade)
-    c2 = theory.createUpgrade(
-        4,
-        currency,
-        new ExponentialCost(1e10, BigNumber.from(1e5))
-    );
+    c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, BigNumber.from(1e5)));
     c2.getDescription = _ => Utils.getMath("c_2 = 1.5^{" + c2.level + "}");
 
     theory.createPublicationUpgrade(0, currency, 1e8);
@@ -72,9 +68,8 @@ var tick = (elapsedTime, multiplier) =>
     let B = 0.05 / (1 + a2.level);
     let C = 0.05 + 0.03*c1.level;
     let Alpha = 1 + 0.02*alpha.level;
-
-    let beta = BigNumber.from(1.5).pow(c2.level); // β = exact c2 value
-
+    let beta = Math.pow(1.5, c2.level);
+    
     let xVal = x.toNumber();
     let EVal = E.toNumber();
     let ratio = Math.max(1e-50, xVal / EVal);
@@ -102,7 +97,7 @@ var tick = (elapsedTime, multiplier) =>
 
     let growth = beta.toNumber() * baseGrowth;
 
-x = x.plus(BigNumber.from(growth).times(elapsedTime));
+x = x.plus(BigNumber.from(growth * elapsedTime));
 E = E.plus(BigNumber.from(dE).times(elapsedTime));
 S += dS * elapsedTime;
 
