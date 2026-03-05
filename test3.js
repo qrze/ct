@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.7;
+var version = 4.8;
 
 requiresGameVersion("1.4.33");
 
@@ -19,7 +19,7 @@ var S = 1.1;
 var D = 0;
 
 var a1, a2, c1, c2, alpha;
-var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback;
+var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback, milestoneExplosion;
 
 var init = () =>
 {
@@ -75,13 +75,13 @@ var init = () =>
 
 {
     milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
-    milestoneExplosion.description = "KABOOM!";
-    milestoneExplosion.info = "Large tau gains"
+    milestoneExplosion.description = "Unlock resonance instability";
+    milestoneExplosion.info = "A hidden τ resonance dramatically increases growth."
 }
 
 var tick = (elapsedTime, multiplier) =>
 {
-    let dt = BigNumber.from(elapsedTime * multiplier);
+    let dt = elapsedTime * multiplier;
 
     let A = 0.1 + 0.05*a1.level;
     let B = 0.05 / (1 + a2.level);
@@ -91,7 +91,7 @@ var tick = (elapsedTime, multiplier) =>
     
     let xVal = x.toNumber();
     let EVal = E.toNumber();
-    let ratio = Math.max(1e-50, xVal / EVal);
+    let ratio = Math.max(1e-50, xVal / Math.max(EVal, 1e-10);
 
     // dE
     let dE = A * Math.pow(xVal, Alpha) - B * EVal;
@@ -116,15 +116,34 @@ var tick = (elapsedTime, multiplier) =>
 
     let growth = beta * baseGrowth;
 
-x = x.plus(BigNumber.from(growth * elapsedTime));
+x = BigNumber.from(x.toNumber() + growth * dt);
 E = E.plus(BigNumber.from(dE).times(elapsedTime));
 S += dS * elapsedTime;
 
-currency.value = currency.value.plus(
-    x.times(dt)
-);
+currency.value = currency.value.plus(x.times(dt));
 
-    tauCurrency.value = currency.value.max(BigNumber.ONE).pow(0.18);
+    let tau = currency.value.max(BigNumber.ONE).pow(0.18);
+
+if (milestoneExplosion.level > 0)
+{
+    let logTau = tau.log10().toNumber();
+
+    let center = 250;   // explosion center
+    let width = 70;     // explosion spread
+    let strength = 20;  // explosion power
+
+    let dist = (logTau - center) / width;
+    let resonance = Math.exp(-dist * dist);
+
+    let boostedLog = logTau + strength * resonance;
+
+    if (boostedLog > 300)
+        boostedLog = 300 + Math.log10(1 + (boostedLog - 300) * 0.1);
+
+    tau = BigNumber.from(10).pow(boostedLog);
+}
+
+tauCurrency.value = tau;
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
