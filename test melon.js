@@ -50,15 +50,27 @@ var init = () =>
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
+};
+
+    ///////////////////////
+    //// Milestone upgrades
+    theory.setMilestoneCost(new LinearCost(25, 25));
+{
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Double growth near equilibrium";
+    milestoneResonance.info = "When 0.95 < \\frac{x/E} 1.05, the x is doubled."
+}
 
+{
     milestoneEquilibriumBoost = theory.createMilestoneUpgrade(1, 1);
     milestoneEquilibriumBoost.description = "Add log(x) to dE/dt";
+    milestoneEquilibriumBoost.info = "\\dot{E} = a1x^\\alpha - a2E becomes \\dot{E} = a1x^\\alpha - a2E + log(x + 1)"
+}
 
+{
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
-};
+    milestoneStressFeedback.info = "tbd"
 
 var tick = (elapsedTime, multiplier) =>
 {
@@ -130,7 +142,7 @@ var setInternalState = (state) =>
 
 // Equations
 var getPrimaryEquation = () =>
-    "\\dot{x} = \\beta \\frac{Sx(1 - x/E)}{1+\\delta D}";
+    "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x/E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
     "\\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
@@ -141,7 +153,7 @@ var getTertiaryEquation = () =>
 var getPublicationMultiplier = tau =>
     tau.pow(0.85);
 
-var getPublicationFormula = () =>
+var getPublicationMultiplierFormula = () =>
     "\\tau = \\rho^{0.18}";
 
 init();
