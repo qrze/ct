@@ -77,6 +77,7 @@ var init = () =>
     milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
     milestoneExplosion.description = "KABOOM!";
     milestoneExplosion.info = "Large tau gains"
+}
 
 var tick = (elapsedTime, multiplier) =>
 {
