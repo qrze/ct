@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.5;
+var version = 4.6;
 
 requiresGameVersion("1.4.33");
 
@@ -70,7 +70,13 @@ var init = () =>
 {
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
-    milestoneStressFeedback.info = "tbd"
+    milestoneStressFeedback.info = "//dot{S} = c1 - 0.05*\\Math.abs{\\frac{x/E} - 1} + 0.05*\\Math.sqrt{D}"
+}
+
+{
+    milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
+    milestoneExplosion.description = "KABOOM!";
+    milestoneExplosion.info = "Large tau gains"
 
 var tick = (elapsedTime, multiplier) =>
 {
