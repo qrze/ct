@@ -7,16 +7,16 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 6.1;
+var version = 6.1.1;
 
 requiresGameVersion("1.4.33");
 
 var currency, tauCurrency;
 
-var x = 1;           // JS number
+var x = 1;
 var E = BigNumber.ONE;
-var S = 1.1;         // JS number
-var D = 0;           // JS number
+var S = 1.1;
+var D = 0;
 
 var a1, a2, c1, c2, alpha;
 var milestoneResonance, milestoneEquilibriumBoost, milestoneStressFeedback, milestoneExplosion;
