@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 5.1;
+var version = 5.2;
 
 requiresGameVersion("1.4.33");
 
@@ -102,9 +102,12 @@ var tick = (elapsedTime, multiplier) =>
     if (D < 0.1) D = 0.1;
 
     // x growth
-    let baseGrowth = Math.max(0.02, S * xVal * (1 - xVal / Math.max(EVal,1e-10)));
-    if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
-        baseGrowth *= 2;
+let growth = beta * baseGrowth;
+x = xVal + growth * dt;
+E = BigNumber.from(EVal + dE * dt);
+S += dS * dt;
+
+currency.value = currency.value.plus(BigNumber.from(x * dt));
 
     let growth = beta * baseGrowth;
     x = BigNumber.from(xVal + growth * dt);
