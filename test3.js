@@ -50,8 +50,6 @@ var init = () =>
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
 
-}
-
     ///////////////////////
     //// Milestone upgrades
     theory.setMilestoneCost(new LinearCost(25, 25));
@@ -78,7 +76,7 @@ var init = () =>
     milestoneExplosion.description = "Unlock resonance instability";
     milestoneExplosion.info = "A hidden τ resonance dramatically increases growth."
 }
-
+}
 var tick = (elapsedTime, multiplier) =>
 {
     let dt = elapsedTime * multiplier;
@@ -91,7 +89,7 @@ var tick = (elapsedTime, multiplier) =>
     
     let xVal = x.toNumber();
     let EVal = E.toNumber();
-    let ratio = Math.max(1e-50, xVal / Math.max(EVal, 1e-10);
+    let ratio = Math.max(1e-50, xVal / Math.max(EVal, 1e-10));
 
     // dE
     let dE = A * Math.pow(xVal, Alpha) - B * EVal;
@@ -109,7 +107,7 @@ var tick = (elapsedTime, multiplier) =>
     if (D < 0.1) D = 0.1;
 
     // x growth
-    let baseGrowth = Math.max(0.02, S * xVal * (1 - xVal/EVal));
+    let baseGrowth = Math.max(0.02, S * xVal * (1 - xVal / Math.max(EVal, 1e-10)));
 
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
         baseGrowth *= 2;
@@ -148,6 +146,7 @@ tauCurrency.value = tau;
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
     theory.invalidateTertiaryEquation();
+    theory.invalidateQuaternaryEquation();
 };
 
 // Persistent State
@@ -157,7 +156,7 @@ var getInternalState = () =>
 var setInternalState = (state) =>
 {
     let v = state.split(" ");
-    if (v.length >= 4);
+    if (v.length >= 4)
     {
         x = BigNumber.from(v[0]);
         E = BigNumber.from(v[1]);
@@ -168,7 +167,7 @@ var setInternalState = (state) =>
 
 // Equations
 var getPrimaryEquation = () =>
-    "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x}{E})}{1+\\delta D}";
+    "\\dot{x} = \\beta \\frac{Sx(1-\\frac{x}{E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
     "\\dot{E} = a_1*x^{\\alpha} - a_2*E";
@@ -176,8 +175,8 @@ var getSecondaryEquation = () =>
 var getTertiaryEquation = () =>
     "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
 
-var getQuaternaryEquations = () =>
-    "\\beta = c_2"
+var getQuaternaryEquation = () =>
+    "\\beta = c_2";
 
 var getPublicationMultiplier = tau =>
     tau.pow(0.85);
