@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 5.0;
+var version = 5.1;
 
 requiresGameVersion("1.4.33");
 
@@ -46,6 +46,7 @@ var init = () =>
     c2 = theory.createUpgrade(4, currency, new ExponentialCost(1e10, 1e5));
     c2.getDescription = _ => Utils.getMath("c_2 = 1.5^{" + c2.level + "}");
 
+    // Permanent upgrades
     theory.createPublicationUpgrade(0, currency, 1e8);
     theory.createBuyAllUpgrade(1, currency, 1e15);
     theory.createAutoBuyerUpgrade(2, currency, 1e25);
@@ -53,31 +54,24 @@ var init = () =>
     ///////////////////////
     //// Milestone upgrades
     theory.setMilestoneCost(new LinearCost(25, 25));
-{
+
     milestoneResonance = theory.createMilestoneUpgrade(0, 1);
     milestoneResonance.description = "Double growth near equilibrium";
-    milestoneResonance.info = "When 0.95 < \\frac{x}{E} < 1.05, the x is doubled."
-}
+    milestoneResonance.info = "When 0.95 < \\frac{E}{x} < 1.05, x growth is doubled.";
 
-{
     milestoneEquilibriumBoost = theory.createMilestoneUpgrade(1, 1);
     milestoneEquilibriumBoost.description = "Add log(x) to dE/dt";
-    milestoneEquilibriumBoost.info = "\\dot{E} = a_1 x^\\alpha - a_2 E becomes \\dot{E} = a1x^\\alpha - a2E + log(x + 1)"
-}
+    milestoneEquilibriumBoost.info = "\\dot{E} = a_1 x^{\\alpha} - a_2 E + \\log(x+1)";
 
-{
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
-    milestoneStressFeedback.info = "\\dot{S} = c_1 - 0.05\\left|\\frac{x}{E}-1\\right| + 0.05\\sqrt{D}"
-}
+    milestoneStressFeedback.info = "\\dot{S} = c_1 - 0.05|x/E-1| + 0.05\\sqrt{D}";
 
-{
     milestoneExplosion = theory.createMilestoneUpgrade(3, 1);
     milestoneExplosion.description = "Unlock resonance instability";
-    milestoneExplosion.info = "A hidden τ resonance dramatically increases growth."
-}
-    
+    milestoneExplosion.info = "A hidden τ resonance dramatically increases growth.";
 };
+
 var tick = (elapsedTime, multiplier) =>
 {
     let dt = elapsedTime * multiplier;
@@ -87,7 +81,7 @@ var tick = (elapsedTime, multiplier) =>
     let C = 0.05 + 0.03*c1.level;
     let Alpha = 1 + 0.02*alpha.level;
     let beta = Math.pow(1.5, c2.level);
-    
+
     let xVal = x.toNumber();
     let EVal = E.toNumber();
     let ratio = Math.max(1e-50, xVal / Math.max(EVal, 1e-10));
@@ -104,50 +98,41 @@ var tick = (elapsedTime, multiplier) =>
 
     // dD
     let dD = 0.1*Math.pow(ratio,2) - 0.1*S - 0.003*D;
-    D += dD * elapsedTime;
+    D += dD * dt;
     if (D < 0.1) D = 0.1;
 
     // x growth
-    let baseGrowth = Math.max(0.02, S * xVal * (1 - xVal / Math.max(EVal, 1e-10)));
-
+    let baseGrowth = Math.max(0.02, S * xVal * (1 - xVal / Math.max(EVal,1e-10)));
     if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
         baseGrowth *= 2;
 
     let growth = beta * baseGrowth;
+    x = BigNumber.from(xVal + growth * dt);
+    E = BigNumber.from(EVal + dE * dt);
+    S += dS * dt;
 
-x = BigNumber.from(x.toNumber() + growth * dt);
-E = E.plus(BigNumber.from(dE).times(elapsedTime));
-S += dS * elapsedTime;
+    currency.value = currency.value.plus(x.times(dt));
 
-currency.value = currency.value.plus(x.times(dt));
-
+    // TAU explosion
     let tau = currency.value.max(BigNumber.ONE).pow(0.18);
-
-if (milestoneExplosion.level > 0)
-{
-    let logTau = tau.log10().toNumber();
-
-    let center = 250;   // explosion center
-    let width = 70;     // explosion spread
-    let strength = 20;  // explosion power
-
-    let dist = (logTau - center) / width;
-    let resonance = Math.exp(-dist * dist);
-
-    let boostedLog = logTau + strength * resonance;
-
-    if (boostedLog > 300)
-        boostedLog = 300 + Math.log10(1 + (boostedLog - 300) * 0.1);
-
-    tau = BigNumber.from(10).pow(boostedLog);
-}
-
-tauCurrency.value = tau;
+    if (milestoneExplosion.level > 0)
+    {
+        let logTau = tau.log10().toNumber();
+        let center = 250;
+        let width = 70;
+        let strength = 20;
+        let dist = (logTau - center) / width;
+        let resonance = Math.exp(-dist * dist);
+        let boostedLog = logTau + strength * resonance;
+        if (boostedLog > 300)
+            boostedLog = 300 + Math.log10(1 + (boostedLog - 300) * 0.1);
+        tau = BigNumber.from(10).pow(boostedLog);
+    }
+    tauCurrency.value = tau;
 
     theory.invalidatePrimaryEquation();
     theory.invalidateSecondaryEquation();
     theory.invalidateTertiaryEquation();
-    theory.invalidateQuaternaryEquation();
 };
 
 // Persistent State
@@ -168,7 +153,7 @@ var setInternalState = (state) =>
 
 // Equations
 var getPrimaryEquation = () =>
-    "\\dot{x} = \\beta \\frac{Sx(1-\\frac{x}{E})}{1+\\delta D}";
+    "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x}{E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
     "\\dot{E} = a_1 x^{\\alpha} - a_2 E";
