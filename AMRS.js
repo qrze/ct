@@ -13,9 +13,9 @@ requiresGameVersion("1.4.33");
 
 var currency, tauCurrency;
 
-var x = 1; // JS number
+var x = 1;
 var E = BigNumber.ONE;
-var S = 1.1; // persistent
+var S = 1.1;
 var D = 0;
 
 var a1, a2, c1, c2, alpha;
