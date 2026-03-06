@@ -7,7 +7,7 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "qrze, melon";
-var version = 4.9;
+var version = 5.0;
 
 requiresGameVersion("1.4.33");
 
@@ -68,7 +68,7 @@ var init = () =>
 {
     milestoneStressFeedback = theory.createMilestoneUpgrade(2, 1);
     milestoneStressFeedback.description = "Convert stress into stability";
-    milestoneStressFeedback.info = "\\dot{S} = c_1 - 0.05\\left|\\frac{x}{E}-1\\right|} + 0.05\\sqrt{D}"
+    milestoneStressFeedback.info = "\\dot{S} = c_1 - 0.05\\left|\\frac{x}{E}-1\\right| + 0.05\\sqrt{D}"
 }
 
 {
@@ -76,7 +76,8 @@ var init = () =>
     milestoneExplosion.description = "Unlock resonance instability";
     milestoneExplosion.info = "A hidden τ resonance dramatically increases growth."
 }
-}
+    
+};
 var tick = (elapsedTime, multiplier) =>
 {
     let dt = elapsedTime * multiplier;
@@ -170,7 +171,7 @@ var getPrimaryEquation = () =>
     "\\dot{x} = \\beta \\frac{Sx(1-\\frac{x}{E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
-    "\\dot{E} = a_1*x^{\\alpha} - a_2*E";
+    "\\dot{E} = a_1 x^{\\alpha} - a_2 E";
 
 var getTertiaryEquation = () =>
     "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
