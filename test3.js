@@ -157,7 +157,7 @@ var getInternalState = () =>
 var setInternalState = (state) =>
 {
     let v = state.split(" ");
-    if (v.length >= 4)
+    if (v.length >= 4);
     {
         x = BigNumber.from(v[0]);
         E = BigNumber.from(v[1]);
@@ -171,10 +171,13 @@ var getPrimaryEquation = () =>
     "\\dot{x} = \\beta \\frac{Sx(1 - \\frac{x}{E})}{1+\\delta D}";
 
 var getSecondaryEquation = () =>
-    "\\dot{E} = a_1 x^{\\alpha} - a_2 E \\\\ \\beta = c_2";
+    "\\dot{E} = a_1*x^{\\alpha} - a_2*E";
 
 var getTertiaryEquation = () =>
     "S=" + S.toFixed(2) + ", D=" + D.toFixed(2);
+
+var getQuaternaryEquations = () =>
+    "\\beta = c_2"
 
 var getPublicationMultiplier = tau =>
     tau.pow(0.85);
