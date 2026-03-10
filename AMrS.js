@@ -7,13 +7,13 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "pwwraisedd, melon";
-var version = 6.4;
+var version = 6.5;
 
 requiresGameVersion("1.4.33");
 
 var currency, tauCurrency;
 
-var x = 1;
+var x = BigNumber.ONE;
 var E = BigNumber.ONE;
 var S = 1.1;
 var D = 0;
@@ -89,18 +89,21 @@ var tick = (elapsedTime, multiplier) =>
     D += dD * dt;
     if (D < 0.1) D = 0.1;
 
-    let baseGrowth = Math.max(0.02, S * x * (1 - x / EVal));
+   let baseGrowth = Math.max(0.02, S * x * (1 - x / EVal) / (1 + D));
 
-    if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
-        baseGrowth *= 2;
+if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
+    baseGrowth *= 2;
 
-    x += baseGrowth * beta * dt;
+x += baseGrowth * beta * dt;
 
-    E = E.plus(BigNumber.from(dE).times(dt));
+if (x > 1e300)
+    x = 1e300;
+
+    E = E.plus(BigNumber.from(dE * dE));
 
     S += dS * dt;
 
-    currency.value = currency.value.plus(BigNumber.from(x).times(dt));
+    currency.value = currency.value.plus(BigNumber.from(x * dt));
 
     let tau = currency.value.max(BigNumber.ONE).pow(0.18);
 
