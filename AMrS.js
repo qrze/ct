@@ -7,13 +7,13 @@ var id = "adaptive_multi_regime";
 var name = "Adaptive Multi-Regime Stability";
 var description = "Stable equilibrium growth with smooth resonance dynamics.";
 var authors = "pwwraisedd, melon";
-var version = 6.5;
+var version = 6.6;
 
 requiresGameVersion("1.4.33");
 
 var currency, tauCurrency;
 
-var x = BigNumber.ONE;
+var x = 1;
 var E = BigNumber.ONE;
 var S = 1.1;
 var D = 0;
@@ -78,28 +78,33 @@ var tick = (elapsedTime, multiplier) =>
     let ratio = Math.max(1e-50, x / Math.max(EVal, 1e-10));
 
     let dE = A * Math.pow(x, Alpha) - B * EVal;
+
     if (milestoneEquilibriumBoost.level > 0)
         dE += Math.log(x + 1);
 
     let dS = C - 0.05 * Math.abs(ratio - 1);
+
     if (milestoneStressFeedback.level > 0)
         dS += 0.05 * Math.sqrt(D);
 
-    let dD = 0.1 * Math.pow(ratio, 2) - 0.1 * S - 0.003 * D;
+    let dD = 0.1 * ratio * ratio - 0.1 * S - 0.003 * D;
+
     D += dD * dt;
-    if (D < 0.1) D = 0.1;
 
-   let baseGrowth = Math.max(0.02, S * x * (1 - x / EVal) / (1 + D));
+    if (D < 0.1)
+        D = 0.1;
 
-if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
-    baseGrowth *= 2;
+    let baseGrowth = Math.max(0.02, S * x * (1 - x / EVal) / (1 + D));
 
-x += baseGrowth * beta * dt;
+    if (milestoneResonance.level > 0 && ratio > 0.95 && ratio < 1.05)
+        baseGrowth *= 2;
 
-if (x > 1e300)
-    x = 1e300;
+    x += baseGrowth * beta * dt;
 
-    E = E.plus(BigNumber.from(dE * dE));
+    if (x > 1e300)
+        x = 1e300;
+
+    E = E.plus(BigNumber.from(dE * dt));
 
     S += dS * dt;
 
@@ -116,6 +121,7 @@ if (x > 1e300)
         let strength = 20;
 
         let dist = (logTau - center) / width;
+
         let resonance = Math.exp(-dist * dist);
 
         let boostedLog = logTau + strength * resonance;
@@ -140,6 +146,7 @@ var getInternalState = () =>
 var setInternalState = (state) =>
 {
     let v = state.split(" ");
+
     if (v.length >= 4)
     {
         x = parseFloat(v[0]);
